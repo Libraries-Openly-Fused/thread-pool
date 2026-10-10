@@ -1,3 +1,19 @@
+# Refined version (branch refined-pool)
+
+This branch keeps the original API (`ThreadPool pool(n); pool.init(); pool.submit(f, args...); pool.shutdown();`) and
+changes the implementation:
+
+- Fixes: the shutdown flag is atomic, workers wait under the same mutex the queue is modified with (no lost
+  wake-ups), `shutdown()` finishes the tasks already enqueued, and the destructor shuts down and joins the threads.
+- `submit()` no longer uses `std::bind` and `std::shared_ptr`.
+- New `enqueue(task, count)`: a bulk task of `count` chunks (derive from `ThreadPool::BulkTask` and implement
+  `run(chunk)` and `complete()`). Workers take chunk indices from an atomic counter, nothing is allocated per chunk or
+  per call, and `complete()` is called exactly once, by the last worker, after every chunk has finished. It does not
+  block the caller.
+- Idle workers spin for a short time (`setSpinTime`, 100 us by default) before sleeping, so that tasks enqueued close
+  together are started without waiting for the operating system to wake a thread up.
+- C++17, CMake target `thread-pool` (header only), tests in `tests/` (run with `ctest`), clean under ThreadSanitizer.
+
 # Table of Contents
 &nbsp;[Introduction](https://github.com/mtrebi/thread-pool/blob/master/README.md#introduction)  <br/> 
 &nbsp;[Build instructions](https://github.com/mtrebi/thread-pool/blob/master/README.md#build-instructions)  <br/> 
