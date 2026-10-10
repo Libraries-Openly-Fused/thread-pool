@@ -5,6 +5,8 @@
 #include <queue>
 #include <utility>
 
+namespace thread_pool {
+
 // Thread safe implementation of a Queue using an std::queue
 template <typename T>
 class SafeQueue {
@@ -46,3 +48,5 @@ public:
     return true;
   }
 };
+
+} // namespace thread_pool
