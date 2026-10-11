@@ -39,7 +39,7 @@ int multiply_return(const int a, const int b) {
 int main(int argc, char *argv[])
 {
   // Create pool with 3 threads
-  ThreadPool pool(3);
+  thread_pool::ThreadPool pool(3);
 
   // Initialize pool
   pool.init();

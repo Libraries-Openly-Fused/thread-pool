@@ -1,3 +1,25 @@
+# Refined version (branch refined-pool)
+
+This branch keeps the original way of using the pool (`pool.init(); pool.submit(f, args...); pool.shutdown();`), now
+in the namespace `thread_pool` (`thread_pool::ThreadPool`), and changes the implementation:
+
+- Fixes: the shutdown flag is atomic, workers wait under the same mutex the queue is modified with (no lost
+  wake-ups), `shutdown()` finishes the tasks already enqueued, and the destructor shuts down and joins the threads.
+  `init()` can be retried if a thread cannot be created.
+- `submit()` no longer uses `std::bind` and `std::shared_ptr`; what the function throws goes to its future.
+- New `enqueue(task, count)`: a bulk task of `count` chunks (derive from `ThreadPool::BulkTask` and implement
+  `run(chunk)` and `complete()`). Workers take chunk indices from an atomic counter, nothing is allocated (the queue
+  is intrusive), and `complete()` is called exactly once, by the last thread, after every chunk has finished. It does
+  not block the caller. An exception thrown by a chunk is kept in `task.exception()` for `complete()`.
+- Idle workers spin for a short time (`setSpinTime`, 100 us by default) before sleeping, so that tasks enqueued close
+  together are started without waiting for the operating system to wake a thread up.
+- Waiting from a worker: a worker must not block on work of its own pool. `wait(future)` and `runOneChunk()` let it
+  run queued chunks while it waits; `isWorkerThread()` tells whether the calling thread is a worker.
+- Misuse fails loudly with `std::logic_error`: enqueueing a task that is still in flight, enqueueing after
+  `shutdown()`, or calling `shutdown()` from a worker.
+- C++17, CMake target `thread-pool` (header only), tests in `tests/` (run with `ctest`), clean under ThreadSanitizer
+  and AddressSanitizer.
+
 # Table of Contents
 &nbsp;[Introduction](https://github.com/mtrebi/thread-pool/blob/master/README.md#introduction)  <br/> 
 &nbsp;[Build instructions](https://github.com/mtrebi/thread-pool/blob/master/README.md#build-instructions)  <br/> 
